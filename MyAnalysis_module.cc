@@ -19,6 +19,7 @@
 
 #include "TH1F.h"
 #include "TNtuple.h"
+#include "TTree.h"
 #include "art_root_io/TFileService.h"
 #include "nusimdata/SimulationBase/MCTruth.h"
 #include "nusimdata/SimulationBase/MCNeutrino.h"
@@ -30,6 +31,7 @@
 #include "lardataobj/Simulation/sim.h"
 #include "lardataobj/Simulation/SimChannel.h"
 #include "lardataobj/Simulation/SimPhotons.h"
+
 
 class MyAnalysis;
 
@@ -53,6 +55,7 @@ private:
   TH1F* fHist;  //!< Output histogram
   TNtuple* fNtuple_XArapucas;
   TNtuple* fNtuple_PMTs;
+  TNtuple* fNtuple_IDE;
   opdet::sbndPDMapAlg pdsMap;  //map for photon detector types
 };
 
@@ -62,15 +65,29 @@ MyAnalysis::MyAnalysis(fhicl::ParameterSet const& p) : EDAnalyzer{p}
   float maxEnergy = p.get<float>("MaxNuEnergy", 3.0);
   art::ServiceHandle<art::TFileService> tfs;
   fHist = tfs->make<TH1F>("enu", ";E_{#nu} (GeV);Events", 100, 0, maxEnergy);
-  fNtuple_XArapucas =tfs->make<TNtuple>("xarapuca","xarapuca","ev:ch:meanphotons:t");
+  fNtuple_IDE =tfs->make<TNtuple>("IDEs","IDEs","ev:totalDE:totalPEarapucas:totalPEarapucasVUV:totalPEarapucasVis");
+  fNtuple_XArapucas =tfs->make<TNtuple>("xarapuca","xarapuca","ev:ch:meanphotons:t:arapucatype");
   fNtuple_PMTs =tfs->make<TNtuple>("pmt","pmt","ev:ch:meanphotons:t");
 }
 
 void MyAnalysis::analyze(art::Event const& e)
 {
-//--------------------------------G4--NPhotons--------------------------------
+	//--------------------------------Variables--------------------------------
+
+  float totalEdep = 0;
+  float totalPEarapucas=0;
+  float totalPEarapucasVUV=0;
+  float totalPEarapucasVis=0;
+  //~float totalne = 0;
+  //~float x,y,z;
   int fEvNumber = e.id().event();
-    std::vector<art::Handle<std::vector<sim::SimPhotonsLite>>> fPhotonLiteHandles;
+  std::vector<art::Handle<std::vector<sim::SimPhotonsLite>>> fPhotonLiteHandles;
+  art::Handle< std::vector<sim::SimChannel> > simchannels;
+  art::Handle<std::vector<simb::MCTruth> > mctruths;
+
+
+  //--------------------------------SimPhotons--------------------------------
+
     e.getManyByType(fPhotonLiteHandles);
 
  const std::vector<art::Handle<std::vector<sim::SimPhotonsLite>>> &photon_handles = fPhotonLiteHandles;
@@ -89,7 +106,17 @@ void MyAnalysis::analyze(art::Event const& e)
 
 	  if((pdtype == "xarapuca_vuv" && !Reflected) || (pdtype == "xarapuca_vis" && Reflected) ){
 		//~if (meanPhotons>2) std::cout<<fEvNumber<<"	"<<ch<<"	"<<meanPhotons<<"	"<<tphoton<<std::endl;
-		fNtuple_XArapucas->Fill(fEvNumber,ch,meanPhotons,tphoton);}
+		int arapucatype=2;
+		
+		if(pdtype == "xarapuca_vuv"){
+			totalPEarapucasVUV+=meanPhotons;
+			arapucatype=1;}else{
+			totalPEarapucasVis+=meanPhotons;
+			arapucatype=0;} //1 VUV, 0 Visible
+		fNtuple_XArapucas->Fill(fEvNumber,ch,meanPhotons,tphoton,arapucatype);
+		totalPEarapucas+=meanPhotons;
+		
+		}//xarapucas
 		
 	  if((pdtype == "pmt_coated") || (pdtype == "pmt_uncoated") ){
 		//~if (meanPhotons>2) std::cout<<fEvNumber<<"	"<<ch<<"	"<<meanPhotons<<"	"<<tphoton<<std::endl;
@@ -98,15 +125,43 @@ void MyAnalysis::analyze(art::Event const& e)
 	  }
 	}
 	}
+	
+	
+  //--------------------------------Deposited Energy--------------------------------
+
+  e.getByLabel("largeant", simchannels); 
+
   
-  art::Handle<std::vector<simb::MCTruth> > mctruths;
+  for (auto const& channel : *simchannels) {
+	  //~const unsigned int ch = channel.Channel();
+	  //~std::cout<<ch<<std::endl;//verify handle works
+        for(auto const &tdcide : channel.TDCIDEMap() ) {
+          for(const auto& ide : tdcide.second) {//tdcide=pair	 <	tick(time)		,		vector of sim::IDEs		>
+            totalEdep += ide.energy;
+            //~totalne += ide.numElectrons;
+            //~x = ide.x;
+            //~y = ide.y;
+            //~z = ide.z;
+            
+          }
+		}
+	}
+	float_t kNplanes=3;
+	totalEdep/=kNplanes	;
+	fNtuple_IDE->Fill(fEvNumber,totalEdep,totalPEarapucas,totalPEarapucasVUV,totalPEarapucasVis);
+	  
+  
+//--------------------------------MCTruth--------------------------------
+
   e.getByLabel("generator", mctruths); 
-  for (auto const& truth : *mctruths) {
-    const simb::MCNeutrino& mcnu = truth.GetNeutrino();
-    const simb::MCParticle& nu = mcnu.Nu();
-    float enu = nu.E();
-    fHist->Fill(enu);
-  }
+
+//Andy Stuff
+  //~for (auto const& truth : *mctruths) {
+    //~const simb::MCNeutrino& mcnu = truth.GetNeutrino();
+    //~const simb::MCParticle& nu = mcnu.Nu();
+    //~float enu = nu.E();
+    //~fHist->Fill(enu);
+  //~}
 
 }
 

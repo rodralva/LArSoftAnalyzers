@@ -1,4 +1,7 @@
 art_make(
+   LIB_LIBRARIES
+    ${FHICLCPP}
+ 
   MODULE_LIBRARIES
     ${ART_FRAMEWORK_CORE}
     ${ART_FRAMEWORK_PRINCIPAL}
@@ -14,6 +17,7 @@ art_make(
     nusimdata_SimulationBase
     sbndcode_OpDetSim
 )
+install_fhicl()
 install_source()
-
+FILE(GLOB fcl_files *.fcl)
 
