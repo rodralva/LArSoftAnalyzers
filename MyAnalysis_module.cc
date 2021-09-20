@@ -129,7 +129,7 @@ void MyAnalysis::analyze(art::Event const& e)
 	
   //--------------------------------Deposited Energy--------------------------------
 
-  e.getByLabel("largeant", simchannels); 
+  e.getByLabel("simdrift", simchannels); 
 
   
   for (auto const& channel : *simchannels) {
