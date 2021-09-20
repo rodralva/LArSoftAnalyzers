@@ -1,2 +1,2 @@
 # LArSoftAnalyzers
-Folder containing some analizers from sbnd and others
+Analyzer that dumps stage G4 photons and other info: PD detector... etc info from optical channels.
