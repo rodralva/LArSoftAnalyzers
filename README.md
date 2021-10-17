@@ -1,4 +1,4 @@
-# LArSoftAnalyzers
+# LArSoftAnalyzer
 Analyzer that dumps:
 - G4 stage  SimPhotons arriving a optical channels (Truth)
 - Raw OpDetWaveforms (+ channel and timestamp)
