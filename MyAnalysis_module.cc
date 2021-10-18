@@ -181,21 +181,49 @@ void MyAnalysis::analyze(art::Event const& e)
   
   unsigned int fChNumber;
   double fStartTime;
-  std::vector<double> fwave;
-  
+  std::vector<double> fwave={};
+  // std::string fpdtype
+  fTree_OpDetWaveforms->Branch("ev",&fEvNumber);
   fTree_OpDetWaveforms->Branch("ch",&fChNumber);
   fTree_OpDetWaveforms->Branch("timestamp",&fStartTime);
   fTree_OpDetWaveforms->Branch("waveform",&fwave);
+  // fTree_OpDetWaveforms->Branch("pd_type",&fpdtype);
 
   for(auto const& wvf : (*waveHandle)) {
     fChNumber   = wvf.ChannelNumber();
     fStartTime  = wvf.TimeStamp(); //in us
-    fwave={};
+    // fpdtype     = pdsMap.pdType(fChNumber);
+    fwave       = {};
     for(unsigned int i = 0; i < wvf.size(); i++) {
       fwave.push_back((double)wvf[i]);
     }
     fTree_OpDetWaveforms->Fill();
   }
+
+  // //--------------------------------OpDetWaveforms----------------------------- as vectors
+  // e.getByLabel("opdaq", waveHandle);
+  
+  // std::vector< unsigned int >        fChNumber;
+  // std::vector< double >              fStartTime ;
+  // std::vector< std::vector<double> > fwave;
+  // std::vector< std::string >               fpdtype;
+
+  // fTree_OpDetWaveforms->Branch("ch",&fChNumber);
+  // fTree_OpDetWaveforms->Branch("timestamp",&fStartTime);
+  // fTree_OpDetWaveforms->Branch("waveform",&fwave);
+  // fTree_OpDetWaveforms->Branch("pd_type","",&fpdtype);
+
+  // for(auto const& wvf : (*waveHandle)) {
+  //   fChNumber.push_back( wvf.ChannelNumber());
+  //   fStartTime.push_back(wvf.TimeStamp()); //in us
+  //   fpdtype.push_back(   pdsMap.pdType( wvf.ChannelNumber() ) );
+  //   std::vector<double> wave       = {};
+  //   for(unsigned int i = 0; i < wvf.size(); i++) {
+  //     wave.push_back((double)wvf[i]);
+  //   }
+  //   fwave.push_back(wave);
+  // }
+  // fTree_OpDetWaveforms->Fill();
 
 
   //--------------------------------MCTruth--------------------------------

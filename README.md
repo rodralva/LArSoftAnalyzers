@@ -7,3 +7,5 @@ Analyzer that dumps:
 TODO:
 - Add MC Truth info (x,y,z, deposited energy....)
 - Add fhicl file to automate the workflow
+    - Products/info to save
+    - Name of the products labels/modules
