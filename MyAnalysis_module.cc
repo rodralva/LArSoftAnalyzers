@@ -60,10 +60,20 @@ public:
   void analyze(art::Event const& e) override;
 
 private:
-  bool fdump_OpHits;
+  bool fdump_OpHits_PMT;
+  bool fdump_OpHits_ARA;
   bool fdump_G4_PE;         
   bool fdump_DE;            
   bool fdump_Op_Waveforms;  
+  bool fdump_De_Waveforms;  
+  bool fdump_MC_Truth;  
+
+  // std::string  label_OpHits;
+  // std::string  label_G4_PE;         
+  // std::string  label_DE;            
+  // std::string  label_Op_Waveforms;  
+  // std::string  label_MC_Truth;  
+  
   
   TH1F* fHist;  //!< Output histogram
   TNtuple* fNtuple_XArapucas;
@@ -72,31 +82,94 @@ private:
   TNtuple* fNtuple_OpHits_XArapuca;
   TNtuple* fNtuple_OpHits_PMT;
   TTree*   fTree_OpDetWaveforms;
+  TTree*   fTree_DeconWaveforms;
+  TTree*   fTree_MC_Truth;
   opdet::sbndPDMapAlg pdsMap;  //map for photon detector types
+  
+  //MCTruth
+  int f_pdg;
+  float f_E;
+  
+  double fx_i;
+  double fy_i;
+  double fz_i;
+
+  double fx_f;
+  double fy_f;
+  double fz_f;
+  int fEvNumber;
+
+  //Raw Digitized Waveforms 
+  unsigned int fChNumber;
+  double fStartTime;
+  std::vector<double> fwave={};
 };
 
 
 MyAnalysis::MyAnalysis(fhicl::ParameterSet const& p) : EDAnalyzer{p}
 {
   float maxEnergy         = p.get<float>("MaxNuEnergy", 3.0);
-  bool dump_OpHits        = p.get<bool >("Dump_OpHits", false);
+  bool dump_OpHits_PMT    = p.get<bool >("Dump_OpHits_PMT", false);
+  bool dump_OpHits_ARA    = p.get<bool >("Dump_OpHits_ARA", false);
   bool dump_G4_PE         = p.get<bool >("Dump_G4_PE", false);
   bool dump_DE            = p.get<bool >("Dump_DE", false);
   bool dump_Op_Waveforms  = p.get<bool >("Dump_Op_Waveforms", false);
+  bool dump_De_Waveforms  = p.get<bool >("Dump_De_Waveforms", false);
+  bool dump_MC_Truth      = p.get<bool >("Dump_MC_Truth", false);
 
-  fdump_OpHits            = dump_OpHits;
+  // std::string dump_OpHits        = p.get<bool >("Label_OpHits", " ");
+  // std::string dump_G4_PE         = p.get<bool >("Label_G4_PE", " ");
+  // std::string dump_DE            = p.get<bool >("Label_DE", " ");
+  // std::string dump_Op_Waveforms  = p.get<bool >("Label_Op_Waveforms", " ");
+  // std::string dump_MC_Truth      = p.get<bool >("Label_MC_Truth", " ");
+
+  fdump_OpHits_PMT        = dump_OpHits_PMT;
+  fdump_OpHits_ARA        = dump_OpHits_ARA;
   fdump_G4_PE             = dump_G4_PE;         
   fdump_DE                = dump_DE;            
   fdump_Op_Waveforms      = dump_Op_Waveforms;  
+  fdump_De_Waveforms      = dump_De_Waveforms;  
+  fdump_MC_Truth          = dump_MC_Truth;  
 
   art::ServiceHandle<art::TFileService> tfs;
   fHist                                          = tfs->make<TH1F>   ("enu", ";E_{#nu} (GeV);Events", 100, 0, maxEnergy);
   if (dump_DE)           fNtuple_IDE             = tfs->make<TNtuple>("IDEs","IDEs","ev:totalDE:totalPEarapucas:totalPEarapucasVUV:totalPEarapucasVis");
   if (dump_G4_PE)        fNtuple_XArapucas       = tfs->make<TNtuple>("xarapuca","xarapuca","ev:ch:meanphotons:t:arapucatype");
   if (dump_G4_PE)        fNtuple_PMTs            = tfs->make<TNtuple>("pmt","pmt","ev:ch:meanphotons:t");
-  if (dump_OpHits)       fNtuple_OpHits_XArapuca = tfs->make<TNtuple>("ophits_xarapuca","ophits_xarapuca","ev:ch:peak_time_abs:peak_time:width:area:amplitude:PE");
-  if (dump_OpHits)       fNtuple_OpHits_PMT      = tfs->make<TNtuple>("ophits_pmt","ophits_pmt"          ,"ev:ch:peak_time_abs:peak_time:width:area:amplitude:PE");
+  if (dump_OpHits_ARA)   fNtuple_OpHits_XArapuca = tfs->make<TNtuple>("ophits_xarapuca","ophits_xarapuca","ev:ch:peak_time_abs:peak_time:width:area:amplitude:PE");
+  if (dump_OpHits_PMT)   fNtuple_OpHits_PMT      = tfs->make<TNtuple>("ophits_pmt","ophits_pmt"          ,"ev:ch:peak_time_abs:peak_time:width:area:amplitude:PE");
   if (dump_Op_Waveforms) fTree_OpDetWaveforms    = tfs->make<TTree>("OpDetWaveforms","OpDetWaveforms");
+  if (dump_De_Waveforms) fTree_DeconWaveforms    = tfs->make<TTree>("DeconvolvedWaveforms","DeconvolvedWaveforms");
+  if (dump_MC_Truth)     fTree_MC_Truth          = tfs->make<TTree>("mc_truth","mc_truth");
+
+  if (dump_MC_Truth){
+    fTree_MC_Truth->Branch("ev",&fEvNumber);
+    fTree_MC_Truth->Branch("pdg",&f_pdg);
+    fTree_MC_Truth->Branch("E",&f_E);
+    fTree_MC_Truth->Branch("x_i",&fx_i);
+    fTree_MC_Truth->Branch("y_i",&fy_i);
+    fTree_MC_Truth->Branch("z_i",&fz_i);
+    fTree_MC_Truth->Branch("x_f",&fx_f);
+    fTree_MC_Truth->Branch("y_f",&fy_f);
+    fTree_MC_Truth->Branch("z_f",&fz_f);
+
+  }
+  if (dump_Op_Waveforms)
+  {
+    fTree_OpDetWaveforms->Branch("ev",&fEvNumber);
+    fTree_OpDetWaveforms->Branch("ch",&fChNumber);
+    fTree_OpDetWaveforms->Branch("timestamp",&fStartTime);
+    fTree_OpDetWaveforms->Branch("waveform",&fwave);
+  }
+  
+  if (dump_De_Waveforms)
+  {
+    fTree_DeconWaveforms->Branch("ev",&fEvNumber);
+    fTree_DeconWaveforms->Branch("ch",&fChNumber);
+    fTree_DeconWaveforms->Branch("timestamp",&fStartTime);
+    fTree_DeconWaveforms->Branch("waveform",&fwave);
+  }
+  
 }
 
 void MyAnalysis::analyze(art::Event const& e)
@@ -107,9 +180,11 @@ void MyAnalysis::analyze(art::Event const& e)
   float totalPEarapucas=0;
   float totalPEarapucasVUV=0;
   float totalPEarapucasVis=0;
-  //~float totalne = 0;
-  //~float x,y,z;
-  int fEvNumber = e.id().event();
+  //float totalne = 0;
+  //float x,y,z;
+  fEvNumber = e.id().event();
+  // std::cout<<"rodrigoa debug: "<<fEvNumber<<std::endl;
+
   std::vector<art::Handle<std::vector<sim::SimPhotonsLite>>> fPhotonLiteHandles;
   art::Handle< std::vector<sim::SimChannel> > simchannels;
   art::Handle<std::vector<simb::MCTruth> > mctruths;
@@ -121,10 +196,10 @@ void MyAnalysis::analyze(art::Event const& e)
   //--------------------------------SimPhotons (G4)--------------------------------
   
   //Get *ALL* SimPhotonsCollectionLite from Event
-  fPhotonLiteHandles.clear();
-  fPhotonLiteHandles = e.getMany<std::vector<sim::SimPhotonsLite>>();
-  const std::vector<art::Handle<std::vector<sim::SimPhotonsLite>>> &photon_handles = fPhotonLiteHandles;
   if (fdump_G4_PE){
+    fPhotonLiteHandles.clear();
+    fPhotonLiteHandles = e.getMany<std::vector<sim::SimPhotonsLite>>();
+    const std::vector<art::Handle<std::vector<sim::SimPhotonsLite>>> &photon_handles = fPhotonLiteHandles;
     for (const art::Handle<std::vector<sim::SimPhotonsLite>> &opdetHandle : photon_handles) {
       // this now tells you if light collection is reflected
       const bool Reflected = (opdetHandle.provenance()->productInstanceName() == "Reflected");
@@ -139,7 +214,7 @@ void MyAnalysis::analyze(art::Event const& e)
           auto tphoton = photonMember.first;
 
           if((pdtype == "xarapuca_vuv" && !Reflected) || (pdtype == "xarapuca_vis" && Reflected) ){
-            //~if (meanPhotons>2) std::cout<<fEvNumber<<"  "<<ch<<"  "<<meanPhotons<<"  "<<tphoton<<std::endl;
+            //if (meanPhotons>2) std::cout<<fEvNumber<<"  "<<ch<<"  "<<meanPhotons<<"  "<<tphoton<<std::endl;
             int arapucatype=2;
             if(pdtype == "xarapuca_vuv"){
               totalPEarapucasVUV+=meanPhotons;
@@ -153,7 +228,7 @@ void MyAnalysis::analyze(art::Event const& e)
           }//xarapucas
 
           if((pdtype == "pmt_coated") || (pdtype == "pmt_uncoated") ){
-            //~if (meanPhotons>2) std::cout<<fEvNumber<<"  "<<ch<<"  "<<meanPhotons<<"  "<<tphoton<<std::endl;
+            //if (meanPhotons>2) std::cout<<fEvNumber<<"  "<<ch<<"  "<<meanPhotons<<"  "<<tphoton<<std::endl;
             fNtuple_PMTs->Fill(fEvNumber,ch,meanPhotons,tphoton);
           }
         }
@@ -164,15 +239,15 @@ void MyAnalysis::analyze(art::Event const& e)
   if(fdump_DE){
     e.getByLabel("simdrift", simchannels); 
     for (auto const& channel : *simchannels) {
-      //~const unsigned int ch = channel.Channel();
-      //~std::cout<<ch<<std::endl;//verify handle works
+      //const unsigned int ch = channel.Channel();
+      //std::cout<<ch<<std::endl;//verify handle works
           for(auto const &tdcide : channel.TDCIDEMap() ) {
             for(const auto& ide : tdcide.second) {//tdcide=pair   <  tick(time)    ,    vector of sim::IDEs    >
               totalEdep += ide.energy;
-              //~totalne += ide.numElectrons;
-              //~x = ide.x;
-              //~y = ide.y;
-              //~z = ide.z;
+              //totalne += ide.numElectrons;
+              //x = ide.x;
+              //y = ide.y;
+              //z = ide.z;
 
             }
       }
@@ -183,10 +258,10 @@ void MyAnalysis::analyze(art::Event const& e)
   }
   
   //--------------------------------OpHits---------------------------------
-  if(fdump_OpHits){
+  if(fdump_OpHits_ARA){
 
     //-----XArapucas
-    e.getByLabel("ophitarapuca", ophits_ara_h);
+    e.getByLabel("ophitdecoxarapuca", ophits_ara_h);
 
     for(auto const& oph : *ophits_ara_h) {
       auto ch        = oph.OpChannel();
@@ -206,9 +281,11 @@ void MyAnalysis::analyze(art::Event const& e)
                                amplitude,
                                pe);
     }
-
+  }
+  if(fdump_OpHits_PMT){
     //-----PMTs
-    e.getByLabel("ophitpmt", ophits_pmt_h);
+    e.getByLabel("ophitdecopmt", ophits_pmt_h);//deconvolved
+    // e.getByLabel("ophitpmt", ophits_pmt_h);//usual
 
     for(auto const& oph : *ophits_pmt_h) {
       auto ch        = oph.OpChannel();
@@ -235,14 +312,6 @@ void MyAnalysis::analyze(art::Event const& e)
   if(fdump_Op_Waveforms){
 
     e.getByLabel("opdaq", waveHandle);
-    unsigned int fChNumber;
-    double fStartTime;
-    std::vector<double> fwave={};
-    // std::string fpdtype
-    fTree_OpDetWaveforms->Branch("ev",&fEvNumber);
-    fTree_OpDetWaveforms->Branch("ch",&fChNumber);
-    fTree_OpDetWaveforms->Branch("timestamp",&fStartTime);
-    fTree_OpDetWaveforms->Branch("waveform",&fwave);
     // fTree_OpDetWaveforms->Branch("pd_type",&fpdtype);
 
     for(auto const& wvf : (*waveHandle)) {
@@ -254,6 +323,23 @@ void MyAnalysis::analyze(art::Event const& e)
         fwave.push_back((double)wvf[i]);
       }
       fTree_OpDetWaveforms->Fill();
+    }
+  }
+
+  //--------------------------------Deconvolved Waveforms-----------------------------
+  if(fdump_De_Waveforms){
+
+    e.getByLabel("opdecoxarapuca", waveHandle);
+
+    for(auto const& wvf : (*waveHandle)) {
+      fChNumber   = wvf.ChannelNumber();
+      fStartTime  = wvf.TimeStamp(); //in us
+      // fpdtype     = pdsMap.pdType(fChNumber);
+      fwave       = {};
+      for(unsigned int i = 0; i < wvf.size(); i++) {
+        fwave.push_back((double)wvf[i]);
+      }
+      fTree_DeconWaveforms->Fill();
     }
   }
 
@@ -282,20 +368,75 @@ void MyAnalysis::analyze(art::Event const& e)
   // }
   // fTree_OpDetWaveforms->Fill();
 
+  // std::cout<<"rodrigoa debug: "<<"Here"<<std::endl;
 
   //--------------------------------MCTruth--------------------------------
+  if(fdump_MC_Truth){
 
-  e.getByLabel("generator", mctruths); 
+    e.getByLabel("generator", mctruths); 
+
+    // int f_pdg;
+    // float f_E;
+    
+    // double fx_i;
+    // double fy_i;
+    // double fz_i;
+
+    // double fx_f;
+    // double fy_f;
+    // double fz_f;
+    
+    // fTree_MC_Truth->Branch("ev",&fEvNumber);
+    // fTree_MC_Truth->Branch("pdg",&f_pdg);
+    // fTree_MC_Truth->Branch("E",&f_E);
+    // fTree_MC_Truth->Branch("x_i",&fx_i);
+    // fTree_MC_Truth->Branch("y_i",&fy_i);
+    // fTree_MC_Truth->Branch("z_i",&fz_i);
+    // fTree_MC_Truth->Branch("x_f",&fx_f);
+    // fTree_MC_Truth->Branch("y_f",&fy_f);
+    // fTree_MC_Truth->Branch("z_f",&fz_f);
+
+    for (auto const& truth : *mctruths) {
+      int N = truth.NParticles();
+      // std::cout<<"rodrigoa debug: "<<N<<std::endl;
+      for(int i=0;i<N;++i){
+        const simb::MCParticle& nu  = truth.GetParticle(i);
+        float E                     = nu.E();
+        const int pdg               = nu.PdgCode();
+        
+        const TLorentzVector & v4_i = nu.Position();
+        const TLorentzVector & v4_f = nu.EndPosition();
+        
+        auto x_i=v4_i.X();
+        auto y_i=v4_i.Y();
+        auto z_i=v4_i.Z();
+        
+        auto x_f=v4_f.X();
+        auto y_f=v4_f.Y();
+        auto z_f=v4_f.Z();
+
+        f_E=E;
+        f_pdg=pdg;
+        fx_i=x_i;
+        fy_i=y_i;
+        fz_i=z_i;
+        fx_f=x_f;
+        fy_f=y_f;
+        fz_f=z_f;
+        fTree_MC_Truth->Fill();
+      }
+    }
+  }
+
 
   //Andy Stuff
-    //~for (auto const& truth : *mctruths) {
-      //~const simb::MCNeutrino& mcnu = truth.GetNeutrino();
-      //~const simb::MCParticle& nu = mcnu.Nu();
-      //~float enu = nu.E();
-      //~fHist->Fill(enu);
-    //~}
+    //for (auto const& truth : *mctruths) {
+      //const simb::MCNeutrino& mcnu = truth.GetNeutrino();
+      //const simb::MCParticle& nu = mcnu.Nu();
+      //float enu = nu.E();
+      //fHist->Fill(enu);
+    //}
 
 }
 
 DEFINE_ART_MODULE(MyAnalysis)
-
