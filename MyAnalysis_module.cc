@@ -103,6 +103,8 @@ private:
   unsigned int fChNumber;
   double fStartTime;
   std::vector<double> fwave={};
+
+  std::vector< std::vector< std::string > > fProductsToDump;
 };
 
 
@@ -116,12 +118,9 @@ MyAnalysis::MyAnalysis(fhicl::ParameterSet const& p) : EDAnalyzer{p}
   bool dump_Op_Waveforms  = p.get<bool >("Dump_Op_Waveforms", false);
   bool dump_De_Waveforms  = p.get<bool >("Dump_De_Waveforms", false);
   bool dump_MC_Truth      = p.get<bool >("Dump_MC_Truth", false);
-
-  // std::string dump_OpHits        = p.get<bool >("Label_OpHits", " ");
-  // std::string dump_G4_PE         = p.get<bool >("Label_G4_PE", " ");
-  // std::string dump_DE            = p.get<bool >("Label_DE", " ");
-  // std::string dump_Op_Waveforms  = p.get<bool >("Label_Op_Waveforms", " ");
-  // std::string dump_MC_Truth      = p.get<bool >("Label_MC_Truth", " ");
+  
+  std::vector< std::vector< std::string > > ProductsToDump = p.get< std::vector< std::vector <std::string> > >("ProductsToDump");
+  fProductsToDump=ProductsToDump;
 
   fdump_OpHits_PMT        = dump_OpHits_PMT;
   fdump_OpHits_ARA        = dump_OpHits_ARA;
@@ -193,6 +192,11 @@ void MyAnalysis::analyze(art::Event const& e)
   art::Handle< std::vector< raw::OpDetWaveform > > waveHandle;
 
 
+  for (auto i:fProductsToDump){
+    for (auto j:i){
+      std::cout<<j<<std::endl;
+    }
+  }
   //--------------------------------SimPhotons (G4)--------------------------------
   
   //Get *ALL* SimPhotonsCollectionLite from Event
@@ -427,15 +431,6 @@ void MyAnalysis::analyze(art::Event const& e)
       }
     }
   }
-
-
-  //Andy Stuff
-    //for (auto const& truth : *mctruths) {
-      //const simb::MCNeutrino& mcnu = truth.GetNeutrino();
-      //const simb::MCParticle& nu = mcnu.Nu();
-      //float enu = nu.E();
-      //fHist->Fill(enu);
-    //}
 
 }
 
