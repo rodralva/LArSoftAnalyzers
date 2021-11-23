@@ -11,31 +11,21 @@ physics: {
         myanalysis: {       
             module_type    : MyAnalysis
             MaxNuEnergy       : 4.0     
-            Dump_OpHits_PMT   : false
-            Dump_OpHits_ARA   : true
             Dump_G4_PE        : true
             Dump_DE           : true
-            Dump_Op_Waveforms : true
-            Dump_De_Waveforms : true
-            Dump_MC_Truth     : true
 
             #Input for the module: ["type of product","product label","output tree name (1 tree per label)"] be careful: products can be in vectors!
             ProductsToDump    : [
-                                 ["simb::MCTruth"      , "generator"         , "MCtruth_generator"], # Gen:    Montecarlo truth info from Generator Stage (particle PDG, original positions... etc)
-                                 ["sim::SimPhotonsLite", "pdfastsim"         , "G4_Photons"       ], # G4:     Arriving photons at Optical channels from G4 stage
-                                 ["sim::SimChannel",     "simdrift"          , "DE"               ], # G4:     Deposited Energy (DE)
-                                 ["raw::OpDetWaveform" , "opdaq"             , "opdaq"            ], # DetSim: Optical simulated waveforms
-                                 ["recob::OpHit"       , "ophitdecopmt"      , "ophitdecopmt"     ], # Reco:   ophits from deconvolved waveforms (PMT)
-                                 ["recob::OpHit"       , "ophitdecoxarapuca" , "ophitdecoxarapuca"], # Reco:   ophits from deconvolved waveforms (XArapucas)
-                                 ["raw::OpDetWaveform" , "opdecopmt"         , "opdecopmt"        ], # Reco:   deconvolved optical waveforms, input DetSim opdaq (PMT)
-                                 ["raw::OpDetWaveform" , "opdecoxarapuca"    , "opdecoxarapuca"   ]  # Reco:   deconvolved optical waveforms, input DetSim opdaq (XArapucas)
+                                 ["simb::MCTruth"      , "generator"         , "Gen_MCtruth"           ], # Gen:    Montecarlo truth info from Generator Stage (particle PDG, original positions... etc)
+                                 ["sim::SimPhotonsLite", "pdfastsim"         , "G4_Photons"            ], # G4:     Arriving photons at Optical channels from G4 stage
+                                 ["sim::SimChannel",     "simdrift"          , "G4_DE"                 ], # G4:     Deposited Energy (DE)
+                                 ["raw::OpDetWaveform" , "opdaq"             , "Detsim_opdaq"          ], # DetSim: Optical simulated waveforms
+                                 ["recob::OpHit"       , "ophitdecopmt"      , "Reco_ophitdecopmt"     ], # Reco:   ophits from deconvolved waveforms (PMT)
+                                 ["recob::OpHit"       , "ophitdecoxarapuca" , "Reco_ophitdecoxarapuca"], # Reco:   ophits from deconvolved waveforms (XArapucas)
+                                 ["raw::OpDetWaveform" , "opdecopmt"         , "Reco_opdecopmt"        ], # Reco:   deconvolved optical waveforms, input DetSim opdaq (PMT)
+                                 ["raw::OpDetWaveform" , "opdecoxarapuca"    , "Reco_opdecoxarapuca"   ]  # Reco:   deconvolved optical waveforms, input DetSim opdaq (XArapucas)
                                 ]
         
-            # Label_OpHits       : "ophitpmt"     
-            # Label_G4_PE        : ""  
-            # Label_DE           : "simdrift"     
-            # Label_Op_Waveforms : ""   
-            # Label_MC_Truth     : ""   
         }
     }   
     ana: [ myanalysis ]   
